@@ -5,7 +5,9 @@ import { QueryCtrl } from 'app/plugins/sdk';
 import sqlPart from './sql_part';
 import { PanelEvents } from '@grafana/data';
 
-
+/**
+ * 李：将与本项目无关的join组件,format组件删除,将聚合放在select部分，修复了time组件显示5个空格的bug
+ */
 export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
 
   constructor($scope, $injector, uiSegmentSrv, $q) {
@@ -19,14 +21,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.panelCtrl.events.on(PanelEvents.refresh, this.updateRestSqlWithoutRefresh.bind(this), $scope);
     this.updateProjection();
     this.tables = [];
-
-    //zhang 这个考虑要不要保留
-    this.formats = [
-      { text: 'Time series', value: 'grafana.timeserie' },
-      { text: 'Table', value: 'grafana.table' }
-    ];
     this.target.target = this.target.target || '';
-    this.target.type = this.target.type || 'grafana.timeserie';
     this.target.table = this.target.table || "select table";
     this.target.datasource=this.target.datasource || "RestSQL";
     const from = sqlPart.create({ type: 'from', params: [this.target.table] });
@@ -46,7 +41,6 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       this.target.timeField = [];
     }
     this.target.timeField = this.target.timeField || [];
-    console.log("timeFields(len):"+this.target.timeField.length)
     this.timeFieldAdd = this.uiSegmentSrv.newPlusButton();
     this.target.sortParts = this.target.sortParts || [];
     this.sortAdd = this.uiSegmentSrv.newPlusButton();
@@ -128,6 +122,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     console.log("DEBUG: Data Received:", dataList);
     this.lastQueryError = null
   }
+
   onDataError(err) {
     if (this.target.target) {
       this.lastQueryError = err.message
@@ -174,19 +169,9 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       this.tables = result.data;
     })
   }
-  
+
   onTimeAggChanged() {
     this.target.timeAgg = this.target.timeAggSegment.value;
-    this.updateRestSql();
-  }
-
-  onBeginChanged() {
-    this.target.begin= this.target.beginSegment.value;
-    this.updateRestSql();
-  }
-
-  onEndChanged() {
-    this.target.end = this.target.endSegment.value;
     this.updateRestSql();
   }
 
@@ -202,12 +187,12 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   onTimeShiftDimensionChanged() {
     this.updateRestSql();
   }
-  
+
   onLimitQueryChanged() {
     this.target.queryLimit = this.target.queryLimitSegment.value;
     this.updateRestSql()
   }
-  
+
   handleFromPartEvent(part, index, event) {
     if (event.name === "part-param-changed") {
       this.onTableChanged(part.params[0]);
@@ -215,7 +200,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.tables));
     }
   }
-  
+
   addSelectionAction(part, index) {
     this.getOptions()
     const express = sqlPart.create({ type: 'select', params: ['column','alias','aggregate'] });
@@ -306,7 +291,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       this.updateRestSql();
     }
   }
-  
+
   addSortAction(index) {
     const express = sqlPart.create({ type: 'sort', params: ['asc', 'field'] });
     console.log("addSortAction", index);
@@ -339,8 +324,8 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   updateRestSql() {
     this.updateRestSqlWithoutRefresh();
     if (this.target.query.select !== null &&
-      this.target.query.select !== undefined &&
-      this.target.query.select !== "") { // only refresh when fields in filled.
+        this.target.query.select !== undefined &&
+        this.target.query.select !== "") { // only refresh when fields in filled.
       this.panelCtrl.refresh();
     }
   }
@@ -448,7 +433,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.target.aggParts.forEach((part) => {
       const [aggFunc, field] = part.params;
       this.target.query.select.forEach((item,index)=>{
-        if(item.column=== field) 
+        if(item.column=== field)
           this.target.query.select[index].metric=aggFunc
       })
     });
@@ -463,7 +448,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.target.timeField.forEach((part) => {
       this.target.query.time.column = part.params[0];
     });
-    
+
     // update sort
     // this.target.sortParts.forEach((part) => {
     //   const sortExp = part.params[0] === "asc" ? part.params[1] : `-${part.params[1]}`;

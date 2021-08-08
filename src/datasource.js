@@ -1,6 +1,9 @@
 import _ from "lodash";
 import { resultsToDataFrames } from "@grafana/data";
 
+/**
+ * query函数删除了很多没用的代码。包括timeshift,将请求的时间格式统一
+ */
 export class RestSqlDatasource {
 
   /*
@@ -132,8 +135,8 @@ export class RestSqlDatasource {
     // const payload = { // todo: 删除多余target.type
     //   // format: options.targets[0].type
     // };
-    const data = new Array(); // 多query支持
-    var singlequery;
+    const data =[]; // 多query支持
+    let singlequery;
     options.targets.forEach(target => {
           if(target.query == null || target.query ==undefined) {
             return this.q.when({data:[]})
@@ -142,6 +145,7 @@ export class RestSqlDatasource {
           //添加时间间隔
           const singleQuery=target.query;
           if (typeof singleQuery ==="object"){
+            // 这里统一了时间格式为yy:MM:dd hh:mm:ss
             const timeFromOrig = new Date(options.range.from.valueOf())
             console.log("timeFromOrig:"+timeFromOrig)
             const timeFrom = `${timeFromOrig.getFullYear().toString().padStart(4,'0')}-${(timeFromOrig.getMonth() + 1).toString().padStart(2,'0')}-${timeFromOrig.getDate().toString().padStart(2,'0')} ${timeFromOrig.getHours().toString().padStart(2,'0')}:${timeFromOrig.getMinutes().toString().padStart(2,'0')}:${timeFromOrig.getSeconds().toString().padStart(2,'0')}`;
@@ -180,10 +184,10 @@ export class RestSqlDatasource {
       }
     });
   }
-  
+
   metricFindQuery(query) {
     /*
-        
+
     */
     //console.log("metricFindQuery", query);
     const payload = {
@@ -238,7 +242,7 @@ export class RestSqlDatasource {
       }
     });
   }
-  
+
   mapToTextValue(result) {
     /*
         用于metricFindQuery调整下拉选框

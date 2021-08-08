@@ -20,7 +20,7 @@ class SqlPartDef {
       this.wrapOpen = ' ';
       this.wrapClose = ' ';
       this.separator = ' ';
-    } 
+    }
     this.params = options.params;
     this.defaultParams = options.defaultParams;
   }
@@ -76,6 +76,9 @@ function register(options) {
   index[options.type] = new SqlPartDef(options);
 }
 
+/**
+ * 根据html页面显示需要，修改了一些内容
+ */
 register({
   type: 'column',
   style: 'label',
@@ -135,22 +138,22 @@ register({
   type: 'alias',
   style: 'alias',
   params: [
-      { name: 'field', type: 'string',  dynamicLookup: true },
-      { name: 'alias', type: 'string',  dynamicLookup: true }
+    { name: 'field', type: 'string',  dynamicLookup: true },
+    { name: 'alias', type: 'string',  dynamicLookup: true }
   ],
   defaultParams: ['alias'],
 });
 
 register({
-type: 'sort',
-style: 'sort',
-label: 'Order by:',
-params: [
+  type: 'sort',
+  style: 'sort',
+  label: 'Order by:',
+  params: [
     { name: 'sort', type: 'string',  options: ['asc', 'desc'], dynamicLookup: true },
     { name: 'field', type: 'string',  dynamicLookup: true }
-],
+  ],
 });
-  
+
 
 export default {
   create: createPart,
