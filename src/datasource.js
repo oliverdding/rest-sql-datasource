@@ -60,16 +60,6 @@ export class RestSqlDatasource {
   }
 
   getQueryStr(target, timeshift) {
-    /*
-      提取所有的where语句，暂时只在where中支持变量与时间范围
-      2020.10.18: options.targets是数组，多query时使用
-      2020.10.19: 修改传入参数为target, 将调用细分
-      2020.10.23 timeShift初次解决：增加timeShift=true/false控制缩放
-      2020.10.24 timeShift二次解决：使用timeShift, timeShiftDimension控制shift
-      2020.10.27 timeAgg
-      2020.11.6 修复时间戳转换过程中少8小时的bug
-      2020.11.7 将自动填充时间戳改为yyyy-mm-dd HH:MM-SS格式
-      */
     console.log("DEBUG: Query Variable: target:  ", target);
     const queryJson = JSON.parse(target.target);
     const filters = queryJson['select']['filter'];
@@ -120,23 +110,16 @@ export class RestSqlDatasource {
         }
       }
     });
-    // return JSON.stringify(queryJson);
     console.log("queryJson:"+queryJson)
     return queryJson;
   }
 
   query(options) {
     console.log("grafana debug: Original Options: ", options);
-    // var query = this.buildQueryParameters(options);
     if (options.targets.length <= 0) {
       return this.q.when({ data: [] });
     }
     const resultlist=[];//返回结果都填充进这里
-    // const payload = { // todo: 删除多余target.type
-    //   // format: options.targets[0].type
-    // };
-    const data =[]; // 多query支持
-    let singlequery;
     options.targets.forEach(target => {
           if(target.query == null || target.query ==undefined) {
             return this.q.when({data:[]})
@@ -156,21 +139,21 @@ export class RestSqlDatasource {
             singleQuery.time.end=timeTo;
           }
           console.log("singleQuery:"+singleQuery);
-          singlequery=singleQuery;
+          resultlist.push(singleQuery);
         }
     );
-    // console.log("DEBUG: Query: Payload: ", payload);
     return this.doRequest({
       url: this.url + '/query',
       method: 'POST',
-      data: singlequery
-    }).then((resp) => {
+      data: resultlist
+    }).then(function(resp){
       if (resp.data.status === "error") {
         return Promise.reject(new Error(resp.data.msg));
       } else if (resp.data.status === "ok") {
         console.log("DEBUG: Query: Received: ", resp.data);
         return resp.data;
       }
+      return [];
     });
   }
 
@@ -242,7 +225,7 @@ export class RestSqlDatasource {
       }
     });
   }
-
+  
   mapToTextValue(result) {
     /*
         用于metricFindQuery调整下拉选框
@@ -261,9 +244,15 @@ export class RestSqlDatasource {
   doRequest(options) {
     options.withCredentials = this.withCredentials;
     options.headers = this.headers;
-    return this.backendSrv.datasourceRequest(options);
+    console.log("debug 1");
+    console.log(this.backendSrv.datasourceRequest(options))
+    return this.backendSrv.datasourceRequest(options).then((response)=>{
+      return response
+    }) //此处额外在then中进行返回，防止上层函数调用doRequest使用then出现undefined问题
+    // return this.backendSrv.datasourceRequest(options);
   }
 
+  //todo 可能不需要用到
   // filter targets.target
   buildQueryParameters(options) {
     options.targets = _.filter(options.targets, target => {
