@@ -6,7 +6,7 @@ import sqlPart from './sql_part';
 import { PanelEvents } from '@grafana/data';
 
 /**
- * 李：将与本项目无关的join组件,format组件删除,将聚合放在select部分，修复了time组件显示5个空格的bug
+ * 8-9 修复修改查询页面时发多个query的漏洞,仅当点击RUN才发送query
  */
 export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
 
@@ -142,20 +142,11 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     parts.splice(index, 1);
   }
 
-  onFormatChanged() {
-    // Todo: 暂时取消隐藏无关字段功能。由于无法找到页面完全载入的回调，table形式重载入时会显现。
-    // if (this.target.type === 'grafana.timeserie')
-    //   document.getElementById("timeSeriesSpecial").style.display = "flex";
-    // else if (this.target.type === 'grafana.table')
-    //   document.getElementById("timeSeriesSpecial").style.display = "none";
-    this.updateRestSql();
-  }
-
   onTableChanged(table) {
     console.log("tableChanged", table);
     this.target.table = table;
     this.getColumnOptions(table);
-    this.updateRestSql();
+
   }
 
   getColumnOptions(table) { // get available fields from the given table
@@ -173,25 +164,24 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
 
   onTimeAggChanged() {
     this.target.timeAgg = this.target.timeAggSegment.value;
-    this.updateRestSql();
   }
 
   onTimeShiftChanged() {
     this.target.timeShift = this.target.timeShiftSegment.value;
-    this.updateRestSql();
+    // this.updateRestSql();
   }
 
   onTimeAggDimensionChanged() {
-    this.updateRestSql();
+    // this.updateRestSql();
   }
 
   onTimeShiftDimensionChanged() {
-    this.updateRestSql();
+    // this.updateRestSql();
   }
 
   onLimitQueryChanged() {
     this.target.queryLimit = this.target.queryLimitSegment.value;
-    this.updateRestSql()
+    // this.updateRestSql()
   }
 
   handleFromPartEvent(part, index, event) {
@@ -214,11 +204,11 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "action" && event.action.value === "remove") {
       this.removePart(this.target.selectionsParts, part);
-      this.updateRestSql();
+      // this.updateRestSql();
     } else if (event.name === "part-param-changed") {
       this.target.selectionsParts.forEach((item, i) => {
       })
-      this.updateRestSql();
+      // this.updateRestSql();
     } else if (event.name === "get-param-options"&& event.param.name === "column") {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "get-param-options" && event.param.name === "alias") {
@@ -242,10 +232,10 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.whereParts.splice(index, 1);
-      this.updateRestSql()
+      // this.updateRestSql()
     } else if (event.name === "part-param-changed") {
       console.log(part, index, '😎');
-      this.updateRestSql();
+      // this.updateRestSql();
     } else {
       return Promise.resolve([]);
     }
@@ -273,9 +263,9 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.groupParts.splice(index, 1);
-      this.updateRestSql()
+      // this.updateRestSql()
     } else if (event.name === "part-param-changed") {
-      this.updateRestSql();
+      // this.updateRestSql();
     }
   }
 
@@ -287,9 +277,6 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.timeField.splice(index, 1);
-      this.updateRestSql()
-    } else if (event.name === "part-param-changed") {
-      this.updateRestSql();
     }
   }
 
@@ -306,11 +293,8 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.sortParts.splice(index, 1);
-      this.updateRestSql();
     } else if (event.name === "get-param-options" && event.param.name === "field") {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.getAllFields()));
-    } else if (event.name === "part-param-changed") {
-      this.updateRestSql();
     } else {
       return Promise.resolve([]);
     }

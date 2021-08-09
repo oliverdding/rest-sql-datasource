@@ -195,6 +195,7 @@ export class RestSqlDatasource {
     };
 
     console.log("metricFindQuery", payload);
+
     return this.doRequest({
       url: this.url + '/search',
       data: payload,
