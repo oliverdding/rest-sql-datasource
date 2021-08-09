@@ -21,8 +21,8 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.panelCtrl.events.on(PanelEvents.refresh, this.updateRestSqlWithoutRefresh.bind(this), $scope);
     this.updateProjection();
     this.tables = [];
+    this.target.columnOptions = this.target.columnOptions || {};
     this.target.target = this.target.target || '';
-    this.target.type = this.target.type || 'grafana.timeserie';
     this.target.table = this.target.table || "select table";
     this.target.datasource=this.target.datasource || "RestSQL";
     const from = sqlPart.create({ type: 'from', params: [this.target.table] });
@@ -81,6 +81,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.timeFrom = this.panelCtrl.datasource.templateSrv.timeRange.from.format();
     this.timeTo = this.panelCtrl.datasource.templateSrv.timeRange.to.format();
     this.getTables(); // load available tables
+    this.getColumnOptions(this.target.table);
   }
 
 
@@ -122,6 +123,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     console.log("DEBUG: Data Received:", dataList);
     this.lastQueryError = null
   }
+
   onDataError(err) {
     if (this.target.target) {
       this.lastQueryError = err.message
@@ -140,19 +142,26 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     parts.splice(index, 1);
   }
 
-  // onFormatChanged() {
-  //   // Todo: 暂时取消隐藏无关字段功能。由于无法找到页面完全载入的回调，table形式重载入时会显现。
-  //   // if (this.target.type === 'grafana.timeserie')
-  //   //   document.getElementById("timeSeriesSpecial").style.display = "flex";
-  //   // else if (this.target.type === 'grafana.table')
-  //   //   document.getElementById("timeSeriesSpecial").style.display = "none";
-  //   this.updateRestSql();
-  // }
+  onFormatChanged() {
+    // Todo: 暂时取消隐藏无关字段功能。由于无法找到页面完全载入的回调，table形式重载入时会显现。
+    // if (this.target.type === 'grafana.timeserie')
+    //   document.getElementById("timeSeriesSpecial").style.display = "flex";
+    // else if (this.target.type === 'grafana.table')
+    //   document.getElementById("timeSeriesSpecial").style.display = "none";
+    this.updateRestSql();
+  }
 
   onTableChanged(table) {
     console.log("tableChanged", table);
     this.target.table = table;
+    this.getColumnOptions(table);
     this.updateRestSql();
+  }
+
+  getColumnOptions(table) { // get available fields from the given table
+    this.datasource.metricFindOption(table).then(result => {
+      this.target.columnOptions[table] = result.data
+    })
   }
 
   getTables() { // get available tables from the db
@@ -161,19 +170,9 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       this.tables = result.data;
     })
   }
-  
+
   onTimeAggChanged() {
     this.target.timeAgg = this.target.timeAggSegment.value;
-    this.updateRestSql();
-  }
-
-  onBeginChanged() {
-    this.target.begin= this.target.beginSegment.value;
-    this.updateRestSql();
-  }
-
-  onEndChanged() {
-    this.target.end = this.target.endSegment.value;
     this.updateRestSql();
   }
 
@@ -189,12 +188,12 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   onTimeShiftDimensionChanged() {
     this.updateRestSql();
   }
-  
+
   onLimitQueryChanged() {
     this.target.queryLimit = this.target.queryLimitSegment.value;
     this.updateRestSql()
   }
-  
+
   handleFromPartEvent(part, index, event) {
     if (event.name === "part-param-changed") {
       this.onTableChanged(part.params[0]);
@@ -202,13 +201,14 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.tables));
     }
   }
-  
+
   addSelectionAction(part, index) {
     this.getOptions()
     const express = sqlPart.create({ type: 'select', params: ['column','alias','aggregate'] });
     this.target.selectionsParts.push(express);
     this.resetPlusButton(this.selectionAdd);
   }
+
   handleSelectionsPartEvent(part, index, event) {
     if (event.name === "get-part-actions") {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
@@ -216,11 +216,13 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       this.removePart(this.target.selectionsParts, part);
       this.updateRestSql();
     } else if (event.name === "part-param-changed") {
+      this.target.selectionsParts.forEach((item, i) => {
+      })
       this.updateRestSql();
-      return Promise.resolve([this.target.table]);
-    } else{
-            return Promise.resolve([this.target.table]); //zhang: 使用改方法，Promise返回关于table的绑定，解决then未定义问题
-    }
+    } else if (event.name === "get-param-options"&& event.param.name === "column") {
+      return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
+    } else if (event.name === "get-param-options" && event.param.name === "alias") {
+      return Promise.resolve(this.uiSegmentSrv.newOperators());}
   }
 
   addWhereAction(part, index) {
@@ -231,11 +233,11 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
 
   handleWherePartEvent(part, index, event) {
     if (event.name === "get-param-options" && event.param.name === "op") {
-      const operators = ['=', '<', '<=', '>', '>=', 'CONTAINS', 'STARTSWITH', 'ENDSWITH', 'RANGE', 'IN'];
+      const operators = ['=', '<', '<=', '>', '>=', 'contains', 'startswith', 'endswith', 'in',"not in"];
       return Promise.resolve(this.uiSegmentSrv.newOperators(operators));
     } else if (event.name === "get-param-options" && event.param.name === "left") {
       // 左值为可选列
-      return Promise.resolve([this.target.table]);
+      return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "get-part-actions") {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "action" && event.action.value === "remove") {
@@ -268,17 +270,12 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     if (event.name === "get-part-actions") {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "get-param-options") {
-      // return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
-      
-      this.updateRestSql();
-      return Promise.resolve([this.target.table]);
+      return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.groupParts.splice(index, 1);
       this.updateRestSql()
     } else if (event.name === "part-param-changed") {
       this.updateRestSql();
-      return Promise.resolve([this.target.table]);
-      
     }
   }
 
@@ -287,16 +284,20 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     if (event.name === "get-part-actions") {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "get-param-options") {
-      // return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
-      this.updateRestSql();
-      return Promise.resolve([this.target.table]);
+      return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.timeField.splice(index, 1);
       this.updateRestSql()
     } else if (event.name === "part-param-changed") {
       this.updateRestSql();
-      return Promise.resolve([this.target.table]);
     }
+  }
+
+  addSortAction(index) {
+    const express = sqlPart.create({ type: 'sort', params: ['asc', 'field'] });
+    console.log("addSortAction", index);
+    this.target.sortParts.push(express);
+    this.resetPlusButton(this.sortAdd);
   }
 
   handleSortPartEvent(part, index, event) {
@@ -324,8 +325,8 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   updateRestSql() {
     this.updateRestSqlWithoutRefresh();
     if (this.target.query.select !== null &&
-      this.target.query.select !== undefined &&
-      this.target.query.select !== "") { // only refresh when fields in filled.
+        this.target.query.select !== undefined &&
+        this.target.query.select !== "") { // only refresh when fields in filled.
       this.panelCtrl.refresh();
     }
   }
@@ -350,8 +351,9 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       ">=": ">=",
       "startswith": "startswith",
       "endswith": "endswith",
-      "RANGE": "__range",
-      "IN": "__in"
+      "contains":"contains",
+      "in": "in",
+      "not in":"not in"
     }
     console.log(parts);
     parts.forEach((part) => {
@@ -360,6 +362,33 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       temp.op=operatorToSuffix[part.params[1]];
       temp.value=part.params[2];
       whereTarget.push(temp);
+      // if (this.isJson(value)) {
+      //   // 操作符为IN和RANGE时，右值为json数组的形式
+      //   const valueList = JSON.parse(value);
+      //   if (!Array.isArray(valueList)) {
+      //     return Promise.reject(new Error("Error: Only support array type"));
+      //   }
+      //   whereTarget[key] = valueList;
+      // } else { //普通字符串
+      //   if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("\'") && value.endsWith("\'"))) {
+      //     // 字符串处理，删除头尾手动添加的单/双引号
+      //     const tmpStr = value;
+      //     whereTarget[key] = tmpStr.slice(1, tmpStr.length - 1);
+      //   } else if (!isNaN(Number(value))) {
+      //     whereTarget[key] = Number(value);
+      //   } else if (value.toLowerCase() === "true") {
+      //     whereTarget[key] = true;
+      //   } else if (value.toLowerCase() === "false") {
+      //     whereTarget[key] = false;
+      //   } else if (value.startsWith("$")) {
+      //     whereTarget[key] = value;
+      //   } else if (value.match(/^\[.*\$.*\]$/g)) {
+      //     whereTarget[key] = value
+      //   }
+      //   else {
+      //     return Promise.reject(new Error("Error: input string is invalid"));
+      //   }
+      // }
     });
     console.log("where")
     console.log(whereTarget)
@@ -367,6 +396,8 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   }
 
   updateRestSqlWithoutRefresh() {
+    // 将输入的内容更新到target中去
+    // restSql协议结构定义
     this.target.query={
       "from":"",
       "time":{},
@@ -385,6 +416,9 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.target.selectionsParts.forEach((part) => {
       console.log(part)
       const item ={"column":part.params[0],"alias":part.params[1],"metric":part.params[2]}
+      if (item["metric"] === "no aggregate") {
+        item["metric"]="";
+      }
       this.target.query.select.push(item);
     });
     // update time range
@@ -399,6 +433,16 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     result.forEach((item)=>{
       this.target.query.where.push(item)
     })
+    // update aggregation
+    // todo:agg func无法修改, 无法删除
+    this.target.aggParts.forEach((part) => {
+      const [aggFunc, field] = part.params;
+      this.target.query.select.forEach((item,index)=>{
+        if(item.column=== field)
+          this.target.query.select[index].metric=aggFunc
+      })
+    });
+
     // update group by
     this.target.groupParts.forEach((part) => {
       console.log("groupParts", part);
@@ -409,6 +453,16 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.target.timeField.forEach((part) => {
       this.target.query.time.column = part.params[0];
     });
+
+    // update sort
+    // this.target.sortParts.forEach((part) => {
+    //   const sortExp = part.params[0] === "asc" ? part.params[1] : `-${part.params[1]}`;
+    //   this.target.query.sort.push(sortExp);
+    // });
+
+    this.target.target = JSON.stringify(this.target.query);
   }
+
 }
+RestSqlDatasourceQueryCtrl.templateUrl = 'partials/query.editor.html';
 

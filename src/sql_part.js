@@ -92,12 +92,12 @@ register({
   type: 'select',
   style: 'label',
   params: [
-    { name: 'colomn', type: 'string',  dynamicLookup: true },
+    { name: 'column', type: 'string',  dynamicLookup: true },
     { name: 'alias', type: 'string',  dynamicLookup: true },
     {
       name: 'agg',
       type: 'string',
-      options: ['avg', 'sum', 'max', 'min','count', 'count_distinct',""],
+      options: ['avg', 'sum', 'max', 'min','count', 'count distinct','no aggregate'],
       dynamicLookup: true
     }
   ],
