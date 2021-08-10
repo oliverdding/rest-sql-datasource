@@ -1,5 +1,10 @@
 import _ from "lodash";
-import { resultsToDataFrames } from "@grafana/data";
+import { 
+  resultsToDataFrames,
+  DataQueryRequest,
+  DataQueryResponse,
+  MutableDataFrame,
+} from "@grafana/data";
 
 /**
  * query函数删除了很多没用的代码。包括timeshift,将请求的时间格式统一
@@ -60,6 +65,16 @@ export class RestSqlDatasource {
   }
 
   getQueryStr(target, timeshift) {
+    /*
+      提取所有的where语句，暂时只在where中支持变量与时间范围
+      2020.10.18: options.targets是数组，多query时使用
+      2020.10.19: 修改传入参数为target, 将调用细分
+      2020.10.23 timeShift初次解决：增加timeShift=true/false控制缩放
+      2020.10.24 timeShift二次解决：使用timeShift, timeShiftDimension控制shift
+      2020.10.27 timeAgg
+      2020.11.6 修复时间戳转换过程中少8小时的bug
+      2020.11.7 将自动填充时间戳改为yyyy-mm-dd HH:MM-SS格式
+      */
     console.log("DEBUG: Query Variable: target:  ", target);
     const queryJson = JSON.parse(target.target);
     const filters = queryJson['select']['filter'];
@@ -110,17 +125,66 @@ export class RestSqlDatasource {
         }
       }
     });
+    // return JSON.stringify(queryJson);
     console.log("queryJson:"+queryJson)
     return queryJson;
   }
 
-  query(options) {
+  // query(options) {
+  //   console.log("grafana debug: Original Options: ", options);
+  //   // var query = this.buildQueryParameters(options);
+  //   if (options.targets.length <= 0) {
+  //     return this.q.when({ data: [] });
+  //   }
+  //   const resultlist=[];//返回结果都填充进这里
+  //   // const payload = { // todo: 删除多余target.type
+  //   //   // format: options.targets[0].type
+  //   // };
+  //   const data =[]; // 多query支持
+  //   let singlequery;
+  //   options.targets.forEach(target => {
+  //         if(target.query == null || target.query ==undefined) {
+  //           return this.q.when({data:[]})
+  //         }
+  //         console.log("query");
+  //         //添加时间间隔
+  //         const singleQuery=target.query;
+  //         if (typeof singleQuery ==="object"){
+  //           // 这里统一了时间格式为yy:MM:dd hh:mm:ss
+  //           const timeFromOrig = new Date(options.range.from.valueOf())
+  //           console.log("timeFromOrig:"+timeFromOrig)
+  //           const timeFrom = `${timeFromOrig.getFullYear().toString().padStart(4,'0')}-${(timeFromOrig.getMonth() + 1).toString().padStart(2,'0')}-${timeFromOrig.getDate().toString().padStart(2,'0')} ${timeFromOrig.getHours().toString().padStart(2,'0')}:${timeFromOrig.getMinutes().toString().padStart(2,'0')}:${timeFromOrig.getSeconds().toString().padStart(2,'0')}`;
+  //           const timeToOrig = new Date(options.range.to.valueOf())
+  //           const timeTo = `${timeToOrig.getFullYear().toString().padStart(4,'0')}-${(timeToOrig.getMonth() + 1).toString().padStart(2,'0')}-${timeToOrig.getDate().toString().padStart(2,'0')} ${timeToOrig.getHours().toString().padStart(2,'0')}:${timeToOrig.getMinutes().toString().padStart(2,'0')}:${timeToOrig.getSeconds().toString().padStart(2,'0')}`;
+  //           console.log("timeFrom:"+timeFrom)
+  //           singleQuery.time.begin=timeFrom;
+  //           singleQuery.time.end=timeTo;
+  //         }
+  //         console.log("singleQuery:"+singleQuery);
+  //         singlequery=singleQuery;
+  //       }
+  //   );
+  //   // console.log("DEBUG: Query: Payload: ", payload);
+  //   return this.doRequest({
+  //     url: this.url + '/query',
+  //     method: 'POST',
+  //     data: singlequery
+  //   }).then((resp) => {
+  //     if (resp.data.status === "error") {
+  //       return Promise.reject(new Error(resp.data.msg));
+  //     } else if (resp.data.status === "ok") {
+  //       console.log("DEBUG: Query: Received: ", resp.data);
+  //       return resp.data;
+  //     }
+  //   });
+  // }
+
+  async query(options) {
     console.log("grafana debug: Original Options: ", options);
     if (options.targets.length <= 0) {
       return this.q.when({ data: [] });
     }
-    const resultlist=[];//返回结果都填充进这里
-    options.targets.forEach(target => {
+    const data= options.targets.map(target => { //使用新版的异步api，（分别对每一个target进行异步请求，最后再集成一个统一返回
           if(target.query == null || target.query ==undefined) {
             return this.q.when({data:[]})
           }
@@ -138,23 +202,27 @@ export class RestSqlDatasource {
             singleQuery.time.begin=timeFrom;
             singleQuery.time.end=timeTo;
           }
-          console.log("singleQuery:"+singleQuery);
-          resultlist.push(singleQuery);
+          console.log(this.temp)
+          let tempresult={};
+          $.ajax({ //在这个异步请求域内，不能使用原来的dorequest的promise异步方法，异步再嵌套异步，容易出现问题 ,自定义一个同步方法
+            type:"post",
+            url:this.url + '/query',
+            data:JSON.stringify(singleQuery),
+            async:false,//同步请求，未返回，会进行阻塞
+            dataType: "json",
+            success:function(result){
+              tempresult=result.data;
+            },
+            failure
+          });
+          console.log("resultresult")
+          console.log(tempresult)
+          return new MutableDataFrame(
+            tempresult
+          ) //新api 要求返回格式 ，该返回需要有一个明确，非异步未处理完的对象
         }
     );
-    return this.doRequest({
-      url: this.url + '/query',
-      method: 'POST',
-      data: resultlist
-    }).then(function(resp){
-      if (resp.data.status === "error") {
-        return Promise.reject(new Error(resp.data.msg));
-      } else if (resp.data.status === "ok") {
-        console.log("DEBUG: Query: Received: ", resp.data);
-        return resp.data;
-      }
-      return [];
-    });
+    return {data};
   }
 
   testDatasource() {
@@ -178,6 +246,7 @@ export class RestSqlDatasource {
     };
 
     console.log("metricFindQuery", payload);
+
     return this.doRequest({
       url: this.url + '/search',
       data: payload,
@@ -210,7 +279,6 @@ export class RestSqlDatasource {
         return resp.data;
       }
     });
-    ;
   }
 
   metricFindTables() {
@@ -225,7 +293,7 @@ export class RestSqlDatasource {
       }
     });
   }
-  
+
   mapToTextValue(result) {
     /*
         用于metricFindQuery调整下拉选框
@@ -244,15 +312,11 @@ export class RestSqlDatasource {
   doRequest(options) {
     options.withCredentials = this.withCredentials;
     options.headers = this.headers;
-    console.log("debug 1");
-    console.log(this.backendSrv.datasourceRequest(options))
     return this.backendSrv.datasourceRequest(options).then((response)=>{
       return response
     }) //此处额外在then中进行返回，防止上层函数调用doRequest使用then出现undefined问题
-    // return this.backendSrv.datasourceRequest(options);
   }
 
-  //todo 可能不需要用到
   // filter targets.target
   buildQueryParameters(options) {
     options.targets = _.filter(options.targets, target => {
