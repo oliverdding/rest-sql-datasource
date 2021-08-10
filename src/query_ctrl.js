@@ -400,7 +400,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.target.selectionsParts.forEach((part) => {
       console.log(part)
       const item ={"column":part.params[0],"alias":part.params[1],"metric":part.params[2]}
-      if (item["metric"] === "no aggregate") {
+      if (item["metric"] === "no aggregate" || item["metric"]==="aggregate") { //默认情况下，发送""
         item["metric"]="";
       }
       this.target.query.select.push(item);
@@ -412,6 +412,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.target.query.time.begin=this.timeFrom
     this.target.query.time.end=this.timeTo
     this.target.query.time.interval=this.target.timeAgg+this.target.timeAggDimension;
+    this.target.query.time.timeShift=this.process_timeShift(this.target.timeShift,this.target.timeShiftDimension)
     //where条件处理
     const result=this.handleWhereParts(this.target.whereParts);
     result.forEach((item)=>{
@@ -435,16 +436,47 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
 
     // update column
     this.target.timeField.forEach((part) => {
-      this.target.query.time.column = part.params[0];
+      let column = part.params[0];
+      let columnindex=this.target.query.group.indexOf(column)
+      this.target.query.time.column=column;
+      if ( columnindex>-1){
+        this.target.query.group.splice(columnindex,1)
+      } //查找在group一栏里面是否有重复的时间column索引，如果存在，那么删除
     });
 
-    // update sort
-    // this.target.sortParts.forEach((part) => {
-    //   const sortExp = part.params[0] === "asc" ? part.params[1] : `-${part.params[1]}`;
-    //   this.target.query.sort.push(sortExp);
-    // });
-
     this.target.target = JSON.stringify(this.target.query);
+  }
+
+  process_timeShift(timeShift,timeShiftDimension){
+    /**
+     * param: timeShift:timeShift数值
+     * param: timeShiftDimension:timeShift单位
+     * return: 毫秒为单位的timeShift
+     */
+    switch (timeShiftDimension) {
+      case "s":
+        timeShift =  timeShift  * 1000;
+        break;
+      case "m":
+        timeShift =  timeShift * 60 * 1000;
+        break;
+      case "h":
+        timeShift =  timeShift * 60 * 60 * 1000;
+        break;
+      case "d":
+        timeShift =  timeShift  * 24 * 60 * 60 * 1000;
+        break;
+      case "w":
+        timeShift =  timeShift  * 7 * 24 * 60 * 60 * 1000;
+        break;
+      case "M":
+        timeShift = timeShift  * 30 * 7 * 24 * 60 * 60 * 1000;
+        break;
+      case "y":
+        timeShift =  timeShift  * 365 * 24 * 60 * 60 * 1000;
+        break;
+    }
+    return timeShift
   }
 
 }

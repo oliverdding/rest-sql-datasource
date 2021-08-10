@@ -8,6 +8,7 @@ import {
 
 /**
  * query函数删除了很多没用的代码。包括timeshift,将请求的时间格式统一
+ *
  */
 export class RestSqlDatasource {
 
@@ -61,7 +62,7 @@ export class RestSqlDatasource {
 
       }
     });
-    return JSON.stringify(varList);
+    return varList;
   }
 
   getQueryStr(target, timeshift) {
@@ -193,17 +194,20 @@ export class RestSqlDatasource {
           //添加时间间隔
           const singleQuery=target.query;
           if (typeof singleQuery ==="object"){
-            // 这里统一了时间格式为yy:MM:dd hh:mm:ss
-            const timeFromOrig = new Date(options.range.from.valueOf())
+            // 这里统一了时间格式为yy:MM:dd hh:mm:ss,并将起始时间都加上timeShift值
+            const timeShift = parseInt(target.query.time.timeShift);
+            const timeFromOrig = new Date(options.range.from.valueOf()+timeShift);
             console.log("timeFromOrig:"+timeFromOrig)
             const timeFrom = `${timeFromOrig.getFullYear().toString().padStart(4,'0')}-${(timeFromOrig.getMonth() + 1).toString().padStart(2,'0')}-${timeFromOrig.getDate().toString().padStart(2,'0')} ${timeFromOrig.getHours().toString().padStart(2,'0')}:${timeFromOrig.getMinutes().toString().padStart(2,'0')}:${timeFromOrig.getSeconds().toString().padStart(2,'0')}`;
-            const timeToOrig = new Date(options.range.to.valueOf())
+            const timeToOrig = new Date(options.range.to.valueOf()+timeShift)
             const timeTo = `${timeToOrig.getFullYear().toString().padStart(4,'0')}-${(timeToOrig.getMonth() + 1).toString().padStart(2,'0')}-${timeToOrig.getDate().toString().padStart(2,'0')} ${timeToOrig.getHours().toString().padStart(2,'0')}:${timeToOrig.getMinutes().toString().padStart(2,'0')}:${timeToOrig.getSeconds().toString().padStart(2,'0')}`;
             console.log("timeFrom:"+timeFrom)
             singleQuery.time.begin=timeFrom;
             singleQuery.time.end=timeTo;
+            // 进行variables替换
+            this.replace_variables(singleQuery,timeFrom,timeTo)
           }
-          console.log(this.temp)
+          // console.log(this.temp)
           let tempresult={};
           $.ajax({ //在这个异步请求域内，不能使用原来的dorequest的promise异步方法，异步再嵌套异步，容易出现问题 ,自定义一个同步方法
             type:"post",
@@ -212,18 +216,67 @@ export class RestSqlDatasource {
             async:false,//同步请求，未返回，会进行阻塞
             dataType: "json",
             success:function(result){
-              tempresult=result.data;
+              if(result.status==="ok"){
+                tempresult=result.data;
+              }else{
+                console.log(result.msg);
+              }
+
             },
-            failure
+            failure:function(result){
+              console.log("some failure:"+result.msg)
+            }
           });
           console.log("resultresult")
           console.log(tempresult)
           return new MutableDataFrame(
-            tempresult
+              tempresult
           ) //新api 要求返回格式 ，该返回需要有一个明确，非异步未处理完的对象
         }
     );
     return {data};
+  }
+
+  replace_variables(singleQuery,timeFrom,timeTo){
+    /**
+     * 说明: 1. 变量名仅支持大小写，其他字符无法识别
+     *      2. 两个特殊的时间变量 $__timeFrom ,$__timeTo 分别对应用户所选时间的起止
+     *      3. 可以一次使用多个变量
+     *      4. 多选时为数组形式替换
+     * param: singleQuery:query请求体内容
+     * return: 将where部分variables进行替换后的query请求
+     */
+    const variables = {};
+    this.templateSrv.variables.forEach(ele => {
+      const key = "$" + ele.name;
+      variables[key] = ele.current.value;
+    });
+    console.log("variables:"+ variables)
+    const filters = singleQuery["where"]
+    filters.map((item) => {
+      if (typeof item["value"] !== "number") { // todo: warning: 每次只能匹配到一个值，但是后面又用循环处理
+        const varList = item["value"].match(/\$(__)*[a-zA-Z]+/g);
+        console.log("DEBUG: replace_variables", varList);
+        if (varList) {
+          varList.forEach((varItem) => {
+            if (Object.keys(variables).includes(varItem)) {
+              let varValue = variables[varItem];
+              console.log("varValue:"+varValue);
+              if (Array.isArray(varValue) && varValue.length > 1) {
+                // 变量多选时，变量值为Array
+                item["value"] = varValue
+              } else {
+                item["value"] = item["value"].replace(varItem, varValue);
+              }
+            }else if (["$__timeFrom"].includes(varItem)) {
+              item["value"] = item["value"].replace(varItem, `${timeFrom}`);
+            } else if (["$__timeTo"].includes(varItem)) {
+              item["value"] = item["value"].replace(varItem, `${timeTo}`);
+            }
+          });
+        }
+      }
+    });
   }
 
   testDatasource() {
