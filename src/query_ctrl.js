@@ -400,7 +400,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.target.selectionsParts.forEach((part) => {
       console.log(part)
       const item ={"column":part.params[0],"alias":part.params[1],"metric":part.params[2]}
-      if (item["metric"] === "no aggregate") {
+      if (item["metric"] === "no aggregate" || item["metric"]==="aggregate") { //默认情况下，发送""
         item["metric"]="";
       }
       this.target.query.select.push(item);
@@ -417,15 +417,6 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     result.forEach((item)=>{
       this.target.query.where.push(item)
     })
-    // update aggregation
-    // todo:agg func无法修改, 无法删除
-    this.target.aggParts.forEach((part) => {
-      const [aggFunc, field] = part.params;
-      this.target.query.select.forEach((item,index)=>{
-        if(item.column=== field)
-          this.target.query.select[index].metric=aggFunc
-      })
-    });
 
     // update group by
     this.target.groupParts.forEach((part) => {
@@ -435,7 +426,12 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
 
     // update column
     this.target.timeField.forEach((part) => {
-      this.target.query.time.column = part.params[0];
+      let column = part.params[0];
+      let columnindex=this.target.query.group.indexOf(column)
+      this.target.query.time.column=column;
+      if ( columnindex>-1){
+        this.target.query.group.splice(columnindex,1)
+      } //查找在group一栏里面是否有重复的时间column索引，如果存在，那么删除
     });
 
     // update sort

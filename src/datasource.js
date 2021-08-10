@@ -203,6 +203,8 @@ export class RestSqlDatasource {
             singleQuery.time.begin=timeFrom;
             singleQuery.time.end=timeTo;
           }
+
+          
           console.log(this.temp)
           let tempresult={};
           $.ajax({ //在这个异步请求域内，不能使用原来的dorequest的promise异步方法，异步再嵌套异步，容易出现问题 ,自定义一个同步方法
@@ -212,9 +214,16 @@ export class RestSqlDatasource {
             async:false,//同步请求，未返回，会进行阻塞
             dataType: "json",
             success:function(result){
-              tempresult=result.data;
+              if(result.status==="ok"){
+                tempresult=result.data;
+              }else{
+                console.log(result.msg);
+              }
+              
             },
-            failure
+            failure:function(result){
+              console.log("some failure:"+result.msg)
+            }
           });
           console.log("resultresult")
           console.log(tempresult)
