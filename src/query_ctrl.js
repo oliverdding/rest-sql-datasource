@@ -418,15 +418,6 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     result.forEach((item)=>{
       this.target.query.where.push(item)
     })
-    // update aggregation
-    // todo:agg func无法修改, 无法删除
-    this.target.aggParts.forEach((part) => {
-      const [aggFunc, field] = part.params;
-      this.target.query.select.forEach((item,index)=>{
-        if(item.column=== field)
-          this.target.query.select[index].metric=aggFunc
-      })
-    });
 
     // update group by
     this.target.groupParts.forEach((part) => {
