@@ -132,12 +132,20 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   }
 
   getOptions() {
+    /**
+     * 点击加号时显示的选项
+     * @type {*[]}
+     */
     const options = [];
     options.push(this.uiSegmentSrv.newSegment({ type: 'expression', value: 'Expression' }));
     return Promise.resolve(options);
   }
 
   removePart(parts, part) {
+    /**
+     * 移除组件
+     * @type {number}
+     */
     const index = _.indexOf(parts, part);
     parts.splice(index, 1);
   }
@@ -146,16 +154,21 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     console.log("tableChanged", table);
     this.target.table = table;
     this.getColumnOptions(table);
-
   }
 
-  getColumnOptions(table) { // get available fields from the given table
+  getColumnOptions(table) {
+    /**
+     *get available fields from the given table
+     */
     this.datasource.metricFindOption(table).then(result => {
       this.target.columnOptions[table] = result.data
     })
   }
 
   getTables() { // get available tables from the db
+    /**
+     * 获取可选表
+     */
     this.datasource.metricFindTables().then(result => {
       console.log("DEBUG: Available tables are: ", result.data);
       this.tables = result.data;
@@ -168,20 +181,10 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
 
   onTimeShiftChanged() {
     this.target.timeShift = this.target.timeShiftSegment.value;
-    // this.updateRestSql();
-  }
-
-  onTimeAggDimensionChanged() {
-    // this.updateRestSql();
-  }
-
-  onTimeShiftDimensionChanged() {
-    // this.updateRestSql();
   }
 
   onLimitQueryChanged() {
     this.target.queryLimit = this.target.queryLimitSegment.value;
-    // this.updateRestSql()
   }
 
   handleFromPartEvent(part, index, event) {
@@ -204,11 +207,6 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "action" && event.action.value === "remove") {
       this.removePart(this.target.selectionsParts, part);
-      // this.updateRestSql();
-    } else if (event.name === "part-param-changed") {
-      this.target.selectionsParts.forEach((item, i) => {
-      })
-      // this.updateRestSql();
     } else if (event.name === "get-param-options"&& event.param.name === "column") {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "get-param-options" && event.param.name === "alias") {
@@ -233,10 +231,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.whereParts.splice(index, 1);
       // this.updateRestSql()
-    } else if (event.name === "part-param-changed") {
-      console.log(part, index, '😎');
-      // this.updateRestSql();
-    } else {
+    }  else {
       return Promise.resolve([]);
     }
   }
@@ -262,9 +257,6 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.groupParts.splice(index, 1);
-      // this.updateRestSql()
-    } else if (event.name === "part-param-changed") {
-      // this.updateRestSql();
     }
   }
 
@@ -279,39 +271,10 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     }
   }
 
-  addSortAction(index) {
-    const express = sqlPart.create({ type: 'sort', params: ['asc', 'field'] });
-    console.log("addSortAction", index);
-    this.target.sortParts.push(express);
-    this.resetPlusButton(this.sortAdd);
-  }
-
-  handleSortPartEvent(part, index, event) {
-    console.log("handleSortPartEvent", event);
-    if (event.name === "get-part-actions") {
-      return this.$q.when([{ text: 'Remove', value: 'remove' }]);
-    } else if (event.name === "action" && event.action.value === "remove") {
-      this.target.sortParts.splice(index, 1);
-    } else if (event.name === "get-param-options" && event.param.name === "field") {
-      return Promise.resolve(this.uiSegmentSrv.newOperators(this.getAllFields()));
-    } else {
-      return Promise.resolve([]);
-    }
-  }
-
   resetPlusButton(button) {
     const plusButton = this.uiSegmentSrv.newPlusButton();
     button.html = plusButton.html;
     button.value = plusButton.value;
-  }
-
-  updateRestSql() {
-    this.updateRestSqlWithoutRefresh();
-    if (this.target.query.select !== null &&
-        this.target.query.select !== undefined &&
-        this.target.query.select !== "") { // only refresh when fields in filled.
-      this.panelCtrl.refresh();
-    }
   }
 
   isJson(inputStr) {
@@ -345,41 +308,30 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       temp.op=operatorToSuffix[part.params[1]];
       temp.value=part.params[2];
       whereTarget.push(temp);
-      // if (this.isJson(value)) {
-      //   // 操作符为IN和RANGE时，右值为json数组的形式
-      //   const valueList = JSON.parse(value);
-      //   if (!Array.isArray(valueList)) {
-      //     return Promise.reject(new Error("Error: Only support array type"));
-      //   }
-      //   whereTarget[key] = valueList;
-      // } else { //普通字符串
-      //   if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("\'") && value.endsWith("\'"))) {
-      //     // 字符串处理，删除头尾手动添加的单/双引号
-      //     const tmpStr = value;
-      //     whereTarget[key] = tmpStr.slice(1, tmpStr.length - 1);
-      //   } else if (!isNaN(Number(value))) {
-      //     whereTarget[key] = Number(value);
-      //   } else if (value.toLowerCase() === "true") {
-      //     whereTarget[key] = true;
-      //   } else if (value.toLowerCase() === "false") {
-      //     whereTarget[key] = false;
-      //   } else if (value.startsWith("$")) {
-      //     whereTarget[key] = value;
-      //   } else if (value.match(/^\[.*\$.*\]$/g)) {
-      //     whereTarget[key] = value
-      //   }
-      //   else {
-      //     return Promise.reject(new Error("Error: input string is invalid"));
-      //   }
-      // }
+
     });
     console.log("where")
     console.log(whereTarget)
     return whereTarget;
   }
 
+  updateRestSql() {
+    /**
+     * 对表单页面的数据进行刷新，并发送请求
+     */
+    this.updateRestSqlWithoutRefresh();
+    if (this.target.query.select !== null &&
+        this.target.query.select !== undefined &&
+        this.target.query.select !== "") { // only refresh when fields in filled.
+      this.panelCtrl.refresh();
+    }
+  }
+
   updateRestSqlWithoutRefresh() {
-    // 将输入的内容更新到target中去
+    /**
+     *  将输入的内容更新到target中去
+     * @type {{select: *[], limit: number, from: string, where: *[], refId: *, time: {}, group: *[]}}
+     */
     // restSql协议结构定义
     this.target.query={
       "refId": this.target.refId,
