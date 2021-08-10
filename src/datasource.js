@@ -181,6 +181,7 @@ export class RestSqlDatasource {
 
   async query(options) {
     console.log("grafana debug: Original Options: ", options);
+    // var query = this.buildQueryParameters(options);
     if (options.targets.length <= 0) {
       return this.q.when({ data: [] });
     }

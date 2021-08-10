@@ -232,8 +232,10 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.whereParts.splice(index, 1);
+      // this.updateRestSql()
     } else if (event.name === "part-param-changed") {
       console.log(part, index, '😎');
+      // this.updateRestSql();
     } else {
       return Promise.resolve([]);
     }
@@ -343,6 +345,33 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       temp.op=operatorToSuffix[part.params[1]];
       temp.value=part.params[2];
       whereTarget.push(temp);
+      // if (this.isJson(value)) {
+      //   // 操作符为IN和RANGE时，右值为json数组的形式
+      //   const valueList = JSON.parse(value);
+      //   if (!Array.isArray(valueList)) {
+      //     return Promise.reject(new Error("Error: Only support array type"));
+      //   }
+      //   whereTarget[key] = valueList;
+      // } else { //普通字符串
+      //   if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("\'") && value.endsWith("\'"))) {
+      //     // 字符串处理，删除头尾手动添加的单/双引号
+      //     const tmpStr = value;
+      //     whereTarget[key] = tmpStr.slice(1, tmpStr.length - 1);
+      //   } else if (!isNaN(Number(value))) {
+      //     whereTarget[key] = Number(value);
+      //   } else if (value.toLowerCase() === "true") {
+      //     whereTarget[key] = true;
+      //   } else if (value.toLowerCase() === "false") {
+      //     whereTarget[key] = false;
+      //   } else if (value.startsWith("$")) {
+      //     whereTarget[key] = value;
+      //   } else if (value.match(/^\[.*\$.*\]$/g)) {
+      //     whereTarget[key] = value
+      //   }
+      //   else {
+      //     return Promise.reject(new Error("Error: input string is invalid"));
+      //   }
+      // }
     });
     console.log("where")
     console.log(whereTarget)
@@ -350,6 +379,8 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   }
 
   updateRestSqlWithoutRefresh() {
+    // 将输入的内容更新到target中去
+    // restSql协议结构定义
     this.target.query={
       "refId": this.target.refId,
       "from":"",
