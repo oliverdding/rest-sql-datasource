@@ -52,7 +52,6 @@ export class RestSqlDatasource {
 
   async query(options) {
     console.log("grafana debug: Original Options: ", options);
-    // var query = this.buildQueryParameters(options);
     if (options.targets.length <= 0) {
       return this.q.when({data: []});
     }
@@ -77,7 +76,6 @@ export class RestSqlDatasource {
             // 进行variables替换
             this.replace_variables(singleQuery, timeFrom, timeTo)
           }
-          // console.log(this.temp)
           let tempresult = {};
           $.ajax({ //在这个异步请求域内，不能使用原来的dorequest的promise异步方法，异步再嵌套异步，容易出现问题 ,自定义一个同步方法
             type: "post",
@@ -163,7 +161,6 @@ export class RestSqlDatasource {
   metricFindQuery(query) {
     /**
      * 发送变量的编辑内容，获取到变量的值
-     * @type {{target}}
      */
     const payload = {
       "target": this.templateSrv.replace(query, null, 'regex')
@@ -186,7 +183,6 @@ export class RestSqlDatasource {
     });
   }
 
-  // 下拉选项
   metricFindOption(tableName) {
     const payload = {
       tableName

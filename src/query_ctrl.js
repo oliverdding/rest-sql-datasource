@@ -118,8 +118,10 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     }
   }
 
-  // Known issus 1
   onDataReceived(dataList) {
+    /**
+     * 接收到数据时控制台打印数据调试
+     */
     console.log("DEBUG: Data Received:", dataList);
     this.lastQueryError = null
   }
@@ -134,7 +136,6 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   getOptions() {
     /**
      * 点击加号时显示的选项
-     * @type {*[]}
      */
     const options = [];
     options.push(this.uiSegmentSrv.newSegment({ type: 'expression', value: 'Expression' }));
@@ -330,7 +331,6 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
   updateRestSqlWithoutRefresh() {
     /**
      *  将输入的内容更新到target中去
-     * @type {{select: *[], limit: number, from: string, where: *[], refId: *, time: {}, group: *[]}}
      */
     // restSql协议结构定义
     this.target.query={
@@ -342,7 +342,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       "group":[],
       "limit": 1000
     }
-    // udpate table
+    // update table
     this.target.query.from = `${this.target.datasource}.${this.target.table}`;
     console.log("the datasource.table"+this.target.query.from)
     // update queryLimit

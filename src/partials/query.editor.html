@@ -173,7 +173,7 @@
     <label class="gf-form-label query-keyword width-8">LIMIT</label>
     <metric-segment segment="ctrl.target.queryLimitSegment" on-change="ctrl.onLimitQueryChanged()"></metric-segment>
   </div>
-
+  <!--仍必须保留该按钮，仅靠grafana的刷新按钮无法回填数据-->
   <br>
   <button class="btn btn-secondary" gf-form-btn ng-click="ctrl.updateRestSql()">RUN</button>
   <br>

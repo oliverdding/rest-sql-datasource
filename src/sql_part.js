@@ -134,27 +134,6 @@ register({
   defaultParams: [],
 });
 
-register({
-  type: 'alias',
-  style: 'alias',
-  params: [
-    { name: 'field', type: 'string',  dynamicLookup: true },
-    { name: 'alias', type: 'string',  dynamicLookup: true }
-  ],
-  defaultParams: ['alias'],
-});
-
-register({
-  type: 'sort',
-  style: 'sort',
-  label: 'Order by:',
-  params: [
-    { name: 'sort', type: 'string',  options: ['asc', 'desc'], dynamicLookup: true },
-    { name: 'field', type: 'string',  dynamicLookup: true }
-  ],
-});
-
-
 export default {
   create: createPart,
 };
