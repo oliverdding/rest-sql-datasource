@@ -18,7 +18,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     this.lastQueryError = null;
     this.panelCtrl.events.on(PanelEvents.dataReceived, this.onDataReceived.bind(this), $scope);
     this.panelCtrl.events.on(PanelEvents.dataError, this.onDataError.bind(this), $scope);
-    this.panelCtrl.events.on(PanelEvents.refresh, this.updateRestSqlWithoutRefresh.bind(this), $scope);
+    this.panelCtrl.events.on(PanelEvents.refresh, this.updateRestSql.bind(this), $scope);
     this.updateProjection();
     this.tables = [];
     this.target.columnOptions = this.target.columnOptions || {};
@@ -155,6 +155,7 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     console.log("tableChanged", table);
     this.target.table = table;
     this.getColumnOptions(table);
+    this.updateRestSqlWithoutRefresh();
   }
 
   getColumnOptions(table) {
@@ -176,16 +177,27 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
     })
   }
 
+  onTimeAggDimensionChanged(){
+    this.updateRestSqlWithoutRefresh();
+  }
+
+  onTimeShiftDimensionChanged(){
+    this.updateRestSqlWithoutRefresh();
+  }
+
   onTimeAggChanged() {
     this.target.timeAgg = this.target.timeAggSegment.value;
+    this.updateRestSqlWithoutRefresh();
   }
 
   onTimeShiftChanged() {
     this.target.timeShift = this.target.timeShiftSegment.value;
+    this.updateRestSqlWithoutRefresh();
   }
 
   onLimitQueryChanged() {
     this.target.queryLimit = this.target.queryLimitSegment.value;
+    this.updateRestSqlWithoutRefresh();
   }
 
   handleFromPartEvent(part, index, event) {
@@ -208,10 +220,12 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "action" && event.action.value === "remove") {
       this.removePart(this.target.selectionsParts, part);
+      this.updateRestSqlWithoutRefresh();
     } else if (event.name === "get-param-options"&& event.param.name === "column") {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "get-param-options" && event.param.name === "alias") {
       return Promise.resolve(this.uiSegmentSrv.newOperators());}
+      else if(event.name === "part-param-changed") this.updateRestSqlWithoutRefresh();
   }
 
   addWhereAction(part, index) {
@@ -231,8 +245,10 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return this.$q.when([{ text: 'Remove', value: 'remove' }]);
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.whereParts.splice(index, 1);
-      // this.updateRestSql()
-    }  else {
+      this.updateRestSqlWithoutRefresh();
+    } else if (event.name === "part-param-changed") {
+      this.updateRestSqlWithoutRefresh();
+    }else {
       return Promise.resolve([]);
     }
   }
@@ -258,6 +274,9 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.groupParts.splice(index, 1);
+      this.updateRestSqlWithoutRefresh();
+    } else if (event.name === "part-param-changed") {
+      this.updateRestSqlWithoutRefresh();
     }
   }
 
@@ -269,6 +288,8 @@ export class RestSqlDatasourceQueryCtrl extends QueryCtrl {
       return Promise.resolve(this.uiSegmentSrv.newOperators(this.target.columnOptions[this.target.table]));
     } else if (event.name === "action" && event.action.value === "remove") {
       this.target.timeField.splice(index, 1);
+    } else if (event.name === "part-param-changed") {
+      this.updateRestSqlWithoutRefresh();
     }
   }
 
